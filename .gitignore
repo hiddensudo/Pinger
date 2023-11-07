@@ -34,6 +34,5 @@
 # other
 .vscode
 build
-Pinger
-Ponger
 .clang-format
+SignalHandler
