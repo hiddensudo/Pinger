@@ -30,3 +30,10 @@
 *.exe
 *.out
 *.app
+
+# other
+.vscode
+build
+Pinger
+Ponger
+.clang-format
