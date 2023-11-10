@@ -17,6 +17,8 @@ private:
     void iterateInterfaces(struct ifaddrs *ifaddr);
     void checkInterface(struct ifaddrs *ifa, int family);
 
+    const char* hostNameToIp();
+
     void getReceiverIpAddress();
 
 public:

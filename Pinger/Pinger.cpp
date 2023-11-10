@@ -63,18 +63,24 @@ void Pinger::checkInterface(struct ifaddrs *ifa, int family) {
     }
 }
 
-void Pinger::ping() {
-    getUserIpAddres();
-    const char* hostname = "google.com";
-    struct hostent* host = gethostbyname(hostname);
+const char* Pinger::hostNameToIp() {
+    std::cout << "Enter host name for ping: " << std::endl;
+    std::string hostname;
+    std::cin >> hostname;
+
+    struct hostent* host = gethostbyname(hostname.c_str());
 
     if (host == NULL) {
         std::cerr << "Error: " << strerror(h_errno) << std::endl;
         exit(1);
     }
 
-    const char* ip = inet_ntoa(*((struct in_addr*)host->h_addr_list[0]));
+    return inet_ntoa(*((struct in_addr*)host->h_addr_list[0]));
+}
 
+void Pinger::ping() {
+    getUserIpAddres();
+    const char* ip = hostNameToIp();
     ICMP icmp(IPbuffer, ip);
     icmp.sendPacket();
     icmp.receivePacket();
