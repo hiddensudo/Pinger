@@ -6,26 +6,22 @@
 
 class Pinger {
 private:
-    int pingerSocket;
-    int pongerSocket;
+    char *IPbuffer;
+    char hostbuffer[256];
+    struct hostent *host_entry;
+    int hostname;
 
-    struct sockaddr_in pingerAddress;
-    socklen_t size;
+    void timeCalculation();
+    
+    void getUserIpAddres();
+    void iterateInterfaces(struct ifaddrs *ifaddr);
+    void checkInterface(struct ifaddrs *ifa, int family);
 
-    bool keepOn;
+    void getReceiverIpAddress();
 
-    void createSocket();
-    void initializePingerAddress();
-    void bindingSocket();
-    void listeningSocket();
-    void acceptingClient();
-
-    void startPinger();
-
-    void closeSocket();
 public:
-    Pinger();
-    ~Pinger();
+    Pinger() = default;
+    virtual ~Pinger() = default;
 
     void ping();
 };

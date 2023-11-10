@@ -1,74 +1,83 @@
 #include "Pinger.h"
 
-#include <errno.h>
-#include <string.h>
+#include <arpa/inet.h>
+#include <ifaddrs.h>
+#include <netdb.h>
 #include <unistd.h>
 
 #include <iostream>
 
-static constexpr uint16_t port = 3000;
+#include "ICMP.h"
 
-void Pinger::createSocket() {
-    this->pongerSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (this->pongerSocket < 0) {
-        std::cerr << "Error: " << strerror(errno) << std::endl;
-        exit(1);
-    }
-}
+void Pinger::getUserIpAddres() {
+    struct ifaddrs *ifaddr;
 
-void Pinger::initializePingerAddress() {
-    this->pingerAddress.sin_port = htons(port);
-    this->pingerAddress.sin_family = AF_INET;
-    this->pingerAddress.sin_addr.s_addr = htons(INADDR_ANY);
-}
-
-void Pinger::bindingSocket() {
-    int bindingStatus =
-        bind(this->pongerSocket,
-             reinterpret_cast<struct sockaddr*>(&this->pingerAddress),
-             sizeof(this->pingerAddress));
-    if (bindingStatus < 0) {
-        std::cerr << "Error: " << strerror(errno) << std::endl;
-        exit(1);
-    }
-}
-
-void Pinger::listeningSocket() {
-    this->size = sizeof(pingerAddress);
-    std::cout << "Listening ponger..." << std::endl;
-    listen(pongerSocket, 1);
-}
-
-void Pinger::acceptingClient() {
-    this->pingerSocket = accept(
-        this->pongerSocket,
-        reinterpret_cast<struct sockaddr*>(&this->pingerAddress), &this->size);
-
-    if (pingerSocket < 0) {
-        std::cerr << "Error: " << strerror(errno) << std::endl;
+    // Get the network interfaces
+    if (getifaddrs(&ifaddr) == -1) {
+        perror("getifaddrs");
+        exit(EXIT_FAILURE);
     }
 
-    keepOn = true;
-    std::cout << "Accepted" << std::endl;
+    // Iterate over the network interfaces
+    iterateInterfaces(ifaddr);
+
+    // Free the memory allocated for the network interfaces
+    freeifaddrs(ifaddr);
 }
 
-void Pinger::ping() {
-    while (this->pingerSocket > 0) {
-        while (this->keepOn) {
+void Pinger::iterateInterfaces(struct ifaddrs *ifaddr) {
+    struct ifaddrs *ifa;
+
+    // Loop over each network interface
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == NULL) continue;
+
+        int family = ifa->ifa_addr->sa_family;
+
+        // Check if the interface is IPv4 or IPv6
+        if (family == AF_INET || family == AF_INET6) {
+            // Check the interface
+            checkInterface(ifa, family);
         }
     }
 }
 
-void Pinger::closeSocket() { close(this->pingerSocket); }
+// This method checks a network interface
+void Pinger::checkInterface(struct ifaddrs *ifa, int family) {
+    char host[NI_MAXHOST];
 
-void Pinger::startPinger() {
-    createSocket();
-    initializePingerAddress();
-    bindingSocket();
-    listeningSocket();
-    acceptingClient();
+    // Get the name of the host
+    int s = getnameinfo(ifa->ifa_addr,
+                        (family == AF_INET) ? sizeof(struct sockaddr_in)
+                                            : sizeof(struct sockaddr_in6),
+                        host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+    if (s != 0) {
+        printf("getnameinfo() failed: %s\n", gai_strerror(s));
+        exit(EXIT_FAILURE);
+    }
+
+    // Check if the interface is not the loopback and it's IPv4
+    if (strcmp(ifa->ifa_name, "lo") != 0 && family == AF_INET) {
+        // Save the IP address
+        this->IPbuffer = strdup(host);  
+    }
 }
 
-Pinger::Pinger() : keepOn(false) { startPinger(); }
+void Pinger::ping() {
+    getUserIpAddres();
+    const char* hostname = "google.com";
+    struct hostent* host = gethostbyname(hostname);
 
-Pinger::~Pinger() { closeSocket(); }
+    if (host == NULL) {
+        std::cerr << "Error: " << strerror(h_errno) << std::endl;
+        exit(1);
+    }
+
+    const char* ip = inet_ntoa(*((struct in_addr*)host->h_addr_list[0]));
+
+    ICMP icmp(IPbuffer, ip);
+    icmp.sendPacket();
+    icmp.receivePacket();
+}
+
+void Pinger::timeCalculation() {}

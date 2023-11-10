@@ -27,6 +27,7 @@ struct icmpheader {
     unsigned short int icmp_chksum;  // Checksum of ICMP
     unsigned short int icmp_id;      // Used for identifying request
     unsigned short int icmp_seq;     // Sequence number
+    unsigned long icmp_timestamp;
 };
 
 class ICMP {

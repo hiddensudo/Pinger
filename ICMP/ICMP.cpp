@@ -6,13 +6,13 @@
 
 void ICMP::createIPHeader(const char *sourceIP, const char *destIP) {
     this->ip = (struct ipheader *)buffer;
-    ip->iph_ver = 4;                                // IPv4
-    ip->iph_ihl = 5;                                // Internet Header Length
-    ip->iph_ttl = 20;                               // Time To Live
-    ip->iph_sourceip.s_addr = inet_addr(sourceIP);  // Sender Ip -> sourceIP
-    ip->iph_destip.s_addr = inet_addr(destIP);      // Recipient Ip -> destIP
-    ip->iph_protocol = IPPROTO_ICMP;                // ICMP
-    ip->iph_len = htons(sizeof(struct ipheader *) + sizeof(struct icmpheader));
+    this->ip->iph_ver = 4;                                // IPv4
+    this->ip->iph_ihl = 5;                                // Internet Header Length
+    this->ip->iph_ttl = 20;                               // Time To Live
+    this->ip->iph_sourceip.s_addr = inet_addr(sourceIP);  // Sender Ip -> sourceIP
+    this->ip->iph_destip.s_addr = inet_addr(destIP);      // Recipient Ip -> destIP
+    this->ip->iph_protocol = IPPROTO_ICMP;                // ICMP
+    this->ip->iph_len = htons(sizeof(struct ipheader) + sizeof(struct icmpheader));
 }
 
 void ICMP::createICMPHeader() {
@@ -24,7 +24,7 @@ void ICMP::createICMPHeader() {
 }
 
 void ICMP::creeateSocket() {
-    this->icmpSocket = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+    this->icmpSocket = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if (icmpSocket == -1) {
         std::cout << "Error: " << strerror(errno) << std::endl;
         exit(1);
@@ -34,7 +34,7 @@ void ICMP::creeateSocket() {
 void ICMP::setSocketOptins() {
     int enable = 1;
     if (setsockopt(this->icmpSocket, IPPROTO_IP, IP_HDRINCL, &enable,
-                   sizeof(enable)) == 1) {
+                   sizeof(enable)) == -1) {
         std::cout << "Error: " << strerror(errno) << std::endl;
         exit(1);
     }
@@ -64,9 +64,23 @@ void ICMP::sendPacket() {
 }
 
 void ICMP::receivePacket() {
-    char recvBuffer[1000];
-    recvfrom(icmpSocket, recvBuffer, sizeof(recvBuffer), 0, NULL, NULL);
-    std::cout << recvBuffer << std::endl;
+    char recvBuffer[1024];
+    struct sockaddr_in senderInfo;
+    socklen_t senderInfoLen = sizeof(senderInfo);
+    int recvResult = recvfrom(icmpSocket, recvBuffer, sizeof(recvBuffer), 0,
+                              (struct sockaddr *)&senderInfo, &senderInfoLen);
+    if (recvResult == -1) {
+        std::cout << "Error: " << strerror(errno) << std::endl;
+    } else {
+        std::cout << "Received " << recvResult << " bytes" << std::endl;
+        struct ipheader *ip = (struct ipheader *)recvBuffer;
+        struct icmpheader *icmp = (struct icmpheader *)(recvBuffer + sizeof(struct ipheader));
+        std::cout << "Sender IP: " << inet_ntoa(ip->iph_sourceip) << std::endl;
+        std::cout << "ICMP Type: " << (int)icmp->icmp_type << std::endl;
+        std::cout << "ICMP ID: " << icmp->icmp_id << std::endl;
+        std::cout << "ICMP Sequence: " << icmp->icmp_seq << std::endl;
+        std::cout << "ICMP Timestamp: " << icmp->icmp_timestamp << std::endl;
+    }
 }
 
 unsigned short ICMP::calculateChecksum(unsigned short *buffer, int length) {
@@ -88,15 +102,18 @@ unsigned short ICMP::calculateChecksum(unsigned short *buffer, int length) {
     sum = (sum >> 16) + (sum & 0xffff);
     sum += (sum >> 16);
     answer = ~sum;
-    
+
     return answer;
 }
 
 ICMP::ICMP(const char *sourceIP, const char *destIP) {
     memset(buffer, 0, 1000);
-
+    std::cout << "Dest ip: " << destIP << std::endl;
+    std::cout << "Source ip: " <<  sourceIP << std::endl;
     createIPHeader(sourceIP, destIP);
     createICMPHeader();
+    creeateSocket();
+    setSocketOptins();
 }
 
 ICMP::~ICMP() { close(icmpSocket); }
