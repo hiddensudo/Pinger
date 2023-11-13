@@ -2,84 +2,79 @@
 
 #include <errno.h>
 
+#include <chrono>
 #include <iostream>
-
-void ICMP::createIPHeader(const char *sourceIP, const char *destIP) {
-    this->ip = (struct ipheader *)buffer;
-    this->ip->iph_ver = 4;                                // IPv4
-    this->ip->iph_ihl = 5;                                // Internet Header Length
-    this->ip->iph_ttl = 20;                               // Time To Live
-    this->ip->iph_sourceip.s_addr = inet_addr(sourceIP);  // Sender Ip -> sourceIP
-    this->ip->iph_destip.s_addr = inet_addr(destIP);      // Recipient Ip -> destIP
-    this->ip->iph_protocol = IPPROTO_ICMP;                // ICMP
-    this->ip->iph_len = htons(sizeof(struct ipheader) + sizeof(struct icmpheader));
-}
+#include <thread>
 
 void ICMP::createICMPHeader() {
-    this->icmp = (struct icmpheader *)(buffer + sizeof(struct ipheader));
-    this->icmp->icmp_type = 8;    // ICMP Echo Request
-    this->icmp->icmp_chksum = 0;  // Start checksum = 0
-    this->icmp->icmp_chksum =     // Calculate checksum by methon
+    icmp = (struct icmpheader *)(buffer + sizeof(struct ipheader));
+    icmp->icmp_id = rand();
+    icmp->icmp_code = 0;
+    icmp->icmp_seq = icmpSequence++;
+    icmp->icmp_type = 8;    // ICMP Echo Request
+    icmp->icmp_chksum = 0;  // Start checksum = 0
+    icmp->icmp_chksum =     // Calculate checksum by method
         calculateChecksum((unsigned short *)icmp, sizeof(struct icmpheader));
-}
-
-void ICMP::creeateSocket() {
-    this->icmpSocket = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-    if (icmpSocket == -1) {
-        std::cout << "Error: " << strerror(errno) << std::endl;
-        exit(1);
-    }
-}
-
-void ICMP::setSocketOptins() {
-    int enable = 1;
-    if (setsockopt(this->icmpSocket, IPPROTO_IP, IP_HDRINCL, &enable,
-                   sizeof(enable)) == -1) {
-        std::cout << "Error: " << strerror(errno) << std::endl;
-        exit(1);
-    }
 }
 
 void ICMP::createDestinationInfo() {
     this->destInfo.sin_family = AF_INET;
-    this->destInfo.sin_addr = this->ip->iph_destip;
+    this->destInfo.sin_addr.s_addr = inet_addr(destIp);
 }
 
 int ICMP::sendRawPacket() {
-    return sendto(icmpSocket, ip, ntohs(ip->iph_len), 0,
+    return sendto(icmpSocket, icmp, sizeof(icmp), 0,
                   (struct sockaddr *)&this->destInfo, sizeof(this->destInfo));
 }
 
 void ICMP::handleSendResult(int result) {
-    if (result == -1)
-        std::cout << "Error" << strerror(errno) << std::endl;
+    if (result < 0)
+        std::cout << "Error: " << strerror(errno) << std::endl;
     else
         std::cout << "Successfully sent " << result << " bytes" << std::endl;
 }
 
 void ICMP::sendPacket() {
     createDestinationInfo();
+    std::cout << "Sending ICMP packet:" << std::endl;
+    std::cout << "Destination IP: " << inet_ntoa(this->destInfo.sin_addr)
+              << std::endl;
+    std::cout << "ICMP Type: " << (int)icmp->icmp_type << std::endl;
+    std::cout << "ICMP Code: " << (int)icmp->icmp_code << std::endl;
+    std::cout << "ICMP Checksum: " << icmp->icmp_chksum << std::endl;
+    std::cout << "ICMP ID: " << icmp->icmp_id << std::endl;
+    std::cout << "ICMP Seq: " << icmp->icmp_seq << std::endl;
     int sendResult = sendRawPacket();
     handleSendResult(sendResult);
 }
 
 void ICMP::receivePacket() {
-    char recvBuffer[1024];
+    char recvBuffer[1024] = {0};  // Buffer to store received packet
     struct sockaddr_in senderInfo;
     socklen_t senderInfoLen = sizeof(senderInfo);
-    int recvResult = recvfrom(icmpSocket, recvBuffer, sizeof(recvBuffer), 0,
-                              (struct sockaddr *)&senderInfo, &senderInfoLen);
-    if (recvResult == -1) {
-        std::cout << "Error: " << strerror(errno) << std::endl;
-    } else {
-        std::cout << "Received " << recvResult << " bytes" << std::endl;
+
+    while (true) {
+        // Receive packet
+        int recvLen = recvfrom(icmpSocket, recvBuffer, sizeof(recvBuffer), 0,
+                               (struct sockaddr *)&senderInfo, &senderInfoLen);
+        if (recvLen < 0) {
+            std::cout << "Error receiving packet: " << strerror(errno) << std::endl;
+            return;
+        }
+
+        // Extract IP header from received packet
         struct ipheader *ip = (struct ipheader *)recvBuffer;
-        struct icmpheader *icmp = (struct icmpheader *)(recvBuffer + sizeof(struct ipheader));
-        std::cout << "Sender IP: " << inet_ntoa(ip->iph_sourceip) << std::endl;
-        std::cout << "ICMP Type: " << (int)icmp->icmp_type << std::endl;
-        std::cout << "ICMP ID: " << icmp->icmp_id << std::endl;
-        std::cout << "ICMP Sequence: " << icmp->icmp_seq << std::endl;
-        std::cout << "ICMP Timestamp: " << icmp->icmp_timestamp << std::endl;
+
+        // Extract ICMP header from received packet
+        struct icmpheader *icmpRec =
+            (struct icmpheader *)(recvBuffer + (ip->iph_ihl * 4));
+
+        // Check if received packet is ICMP echo reply
+        if (icmpRec->icmp_type == 0) {
+            //std::cout << "Ping: "
+            //          << inet_ntoa(senderInfo.sin_addr) << std::endl;
+            break;
+        }
     }
 }
 
@@ -106,14 +101,10 @@ unsigned short ICMP::calculateChecksum(unsigned short *buffer, int length) {
     return answer;
 }
 
-ICMP::ICMP(const char *sourceIP, const char *destIP) {
-    memset(buffer, 0, 1000);
-    std::cout << "Dest ip: " << destIP << std::endl;
-    std::cout << "Source ip: " <<  sourceIP << std::endl;
-    createIPHeader(sourceIP, destIP);
+ICMP::ICMP(const char *destIp)
+    : destIp(destIp), icmpSocket(rawSocket.getSocket()), icmpSequence(0) {
+    memset(buffer, 0, sizeof(buffer));
     createICMPHeader();
-    creeateSocket();
-    setSocketOptins();
 }
 
 ICMP::~ICMP() { close(icmpSocket); }

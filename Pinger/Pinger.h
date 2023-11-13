@@ -3,21 +3,18 @@
 
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <chrono>
+#include <vector>
+#include <string>
+#include <functional>
 
 class Pinger {
 private:
-    char *IPbuffer;
-    char hostbuffer[256];
-    struct hostent *host_entry;
-    int hostname;
+    std::string hostname;
 
-    void timeCalculation();
-    
-    void getUserIpAddres();
-    void iterateInterfaces(struct ifaddrs *ifaddr);
-    void checkInterface(struct ifaddrs *ifa, int family);
+    std::chrono::duration<double> measureTime(std::function<void()> sendAndRecv);
 
-    const char* hostNameToIp();
+    const char *hostNameToIp();
 
     void getReceiverIpAddress();
 

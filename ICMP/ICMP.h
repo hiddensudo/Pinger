@@ -7,12 +7,13 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include "RawSocket.h"
 
 struct ipheader {
     unsigned char iph_ihl : 4, iph_ver : 4;
     unsigned char iph_tos;
     unsigned short int iph_len;
-    unsigned short int iph_ident;
+    unsigned short int iph_id;
     unsigned char iph_flag : 3, iph_offset : 13;
     unsigned char iph_ttl;
     unsigned char iph_protocol;
@@ -27,33 +28,34 @@ struct icmpheader {
     unsigned short int icmp_chksum;  // Checksum of ICMP
     unsigned short int icmp_id;      // Used for identifying request
     unsigned short int icmp_seq;     // Sequence number
-    unsigned long icmp_timestamp;
 };
 
 class ICMP {
 private:
     char buffer[1000];
 
+    RawSocket rawSocket;
     int icmpSocket;
+    
+    int icmpSequence;
 
     struct ipheader* ip;
     struct icmpheader* icmp;
     struct sockaddr_in destInfo;
+    const char* destIp;
 
     unsigned short calculateChecksum(unsigned short* buffer, int length);
 
-    void createIPHeader(const char* sourceIP, const char* destIP);
+    void createIPHeader(const char* destIp);
     void createICMPHeader();
 
-    void creeateSocket();
-    void setSocketOptins();
     void createDestinationInfo();
     int sendRawPacket();
 
     void handleSendResult(int result);
 
 public:
-    ICMP(const char* sourceIP, const char* destIP);
+    ICMP(const char* destIp);
     virtual ~ICMP();
     void sendPacket();
     void receivePacket();
