@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <vector>
 
 #include "ICMP.h"
 
@@ -24,29 +25,38 @@ const char *Pinger::hostNameToIp() {
     return inet_ntoa(*((struct in_addr *)host->h_addr_list[0]));
 }
 
-std::chrono::duration<double> Pinger::measureTime(
-    std::function<void()> sendAndRecv) {
+double Pinger::measureTime(std::function<void()> sendAndRecv) {
     auto start = std::chrono::high_resolution_clock::now();
 
     sendAndRecv();
 
     auto end = std::chrono::high_resolution_clock::now();
 
-    return end - start;
+    auto duration =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+    return duration.count();
 }
 
 void Pinger::ping() {
+    int iter = 6;
     const char *ip = hostNameToIp();
 
     ICMP icmp(ip);
 
+    std::vector<double> timeVector;
+
     std::cout << "Ping " << hostname << " "
               << "(" << ip << ")" << std::endl;
 
-    auto dur = measureTime([&icmp]() {
-        icmp.sendPacket();
-        icmp.receivePacket();
-    });
-
-    std ::cout << hostname << " " << dur.count() << " seconds" << std::endl;
+    while (true) {
+        auto dur = measureTime([&icmp]() {
+            icmp.sendPacket();
+            icmp.receivePacket();
+        });
+        timeVector.push_back(dur);
+        std::cout << dur << " ms" << std::endl;
+        iter--;
+        sleep(1);
+    }
 }

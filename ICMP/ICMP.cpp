@@ -30,20 +30,11 @@ int ICMP::sendRawPacket() {
 void ICMP::handleSendResult(int result) {
     if (result < 0)
         std::cout << "Error: " << strerror(errno) << std::endl;
-    else
-        std::cout << "Successfully sent " << result << " bytes" << std::endl;
 }
 
 void ICMP::sendPacket() {
+    createICMPHeader();
     createDestinationInfo();
-    std::cout << "Sending ICMP packet:" << std::endl;
-    std::cout << "Destination IP: " << inet_ntoa(this->destInfo.sin_addr)
-              << std::endl;
-    std::cout << "ICMP Type: " << (int)icmp->icmp_type << std::endl;
-    std::cout << "ICMP Code: " << (int)icmp->icmp_code << std::endl;
-    std::cout << "ICMP Checksum: " << icmp->icmp_chksum << std::endl;
-    std::cout << "ICMP ID: " << icmp->icmp_id << std::endl;
-    std::cout << "ICMP Seq: " << icmp->icmp_seq << std::endl;
     int sendResult = sendRawPacket();
     handleSendResult(sendResult);
 }
@@ -70,9 +61,8 @@ void ICMP::receivePacket() {
             (struct icmpheader *)(recvBuffer + (ip->iph_ihl * 4));
 
         // Check if received packet is ICMP echo reply
-        if (icmpRec->icmp_type == 0) {
-            //std::cout << "Ping: "
-            //          << inet_ntoa(senderInfo.sin_addr) << std::endl;
+        if (icmpRec->icmp_type == 0 && icmpRec->icmp_seq == icmp->icmp_seq) {
+            std::cout << sizeof(icmpRec) << " bytes" << " from: " << inet_ntoa(senderInfo.sin_addr) << " icmp_seq=" << icmpRec->icmp_seq << " time ";
             break;
         }
     }
@@ -104,7 +94,6 @@ unsigned short ICMP::calculateChecksum(unsigned short *buffer, int length) {
 ICMP::ICMP(const char *destIp)
     : destIp(destIp), icmpSocket(rawSocket.getSocket()), icmpSequence(0) {
     memset(buffer, 0, sizeof(buffer));
-    createICMPHeader();
 }
 
 ICMP::~ICMP() { close(icmpSocket); }

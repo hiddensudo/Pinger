@@ -37,7 +37,7 @@ private:
     RawSocket rawSocket;
     int icmpSocket;
     
-    int icmpSequence;
+    unsigned short int icmpSequence;
 
     struct ipheader* ip;
     struct icmpheader* icmp;

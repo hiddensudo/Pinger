@@ -12,10 +12,10 @@ class Pinger {
 private:
     std::string hostname;
 
-    std::chrono::duration<double> measureTime(std::function<void()> sendAndRecv);
+    double measureTime(std::function<void()> sendAndRecv);
 
     const char *hostNameToIp();
-
+    
     void getReceiverIpAddress();
 
 public:
