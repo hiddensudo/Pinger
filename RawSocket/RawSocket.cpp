@@ -8,6 +8,17 @@
 
 #include <iostream>
 
+void RawSocket::setTimeout(int seconds) {
+    struct timeval timeout;
+    timeout.tv_sec = seconds;
+    timeout.tv_usec = 0;
+
+    if (setsockopt(rawSocket, SOL_SOCKET, SO_RCVTIMEO, &timeout,
+                   sizeof(timeout)) < 0) {
+        std::cout << "Error: " << strerror(errno) << std::endl;
+    }
+}
+
 RawSocket::RawSocket() {
     this->rawSocket = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if (this->rawSocket == -1) {

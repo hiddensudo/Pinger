@@ -8,7 +8,7 @@ private:
 public:
     RawSocket();
     virtual ~RawSocket();
-
+    void setTimeout(int seconds);
     int getSocket();
 };
 

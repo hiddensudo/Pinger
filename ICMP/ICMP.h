@@ -7,6 +7,9 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
+#include <string>
+
 #include "RawSocket.h"
 
 struct ipheader {
@@ -36,13 +39,19 @@ private:
 
     RawSocket rawSocket;
     int icmpSocket;
-    
+
+    int sentedPackagesCount;
+    int recvPackagesCount;
+    int lostPacketCount;
+    int packetLoss;
+
     unsigned short int icmpSequence;
 
     struct ipheader* ip;
     struct icmpheader* icmp;
     struct sockaddr_in destInfo;
     const char* destIp;
+    std::string destHostname;
 
     unsigned short calculateChecksum(unsigned short* buffer, int length);
 
@@ -53,12 +62,18 @@ private:
     int sendRawPacket();
 
     void handleSendResult(int result);
+    std::string ipToHostname();
 
 public:
     ICMP(const char* destIp);
     virtual ~ICMP();
     void sendPacket();
     void receivePacket();
+
+    int getSentedPackageCount();
+    int getRecvPackageCount();
+    int getLostPackageCount();
+    int getPacketLoss();
 };
 
 #endif  // ICMP_H

@@ -7,9 +7,6 @@
 
 #include <algorithm>
 #include <iostream>
-#include <vector>
-
-#include "ICMP.h"
 
 const char *Pinger::hostNameToIp() {
     std::cout << "Enter host name for ping: " << std::endl;
@@ -25,7 +22,7 @@ const char *Pinger::hostNameToIp() {
     return inet_ntoa(*((struct in_addr *)host->h_addr_list[0]));
 }
 
-double Pinger::measureTime(std::function<void()> sendAndRecv) {
+int Pinger::measureTime(std::function<void()> sendAndRecv) {
     auto start = std::chrono::high_resolution_clock::now();
 
     sendAndRecv();
@@ -38,25 +35,70 @@ double Pinger::measureTime(std::function<void()> sendAndRecv) {
     return duration.count();
 }
 
+void Pinger::ensurePingDataExists() {
+    if (timeVector.empty()) {
+        std::cout << "Something went wrong! No ping information available.";
+
+        if (icmp.getSentedPackageCount() == 0)
+            std::cout << " No package was sent!";
+        if (icmp.getPacketLoss() == 100)
+            std::cout << " packet_loss=100%" << std::endl;
+
+        exit(1);
+    }
+}
+
+int Pinger::getMinPing() {
+    return *std::min_element(timeVector.begin(), timeVector.end());
+}
+
+int Pinger::getMaxPing() {
+    return *std::max_element(timeVector.begin(), timeVector.end());
+}
+
+int Pinger::getAvgPing() {
+    int sum = 0;
+    for (auto &time : timeVector) {
+        sum += time;
+    }
+    return sum / timeVector.size();
+}
+
+void Pinger::displayPingInfo() {
+    ensurePingDataExists();
+    std::cout << "Ping information min/max/avg: "
+              << "\nmin_ping=" << getMinPing()
+              << "ms, max_ping=" << getMaxPing()
+              << "ms, avg_ping=" << getAvgPing() << "ms" << std::endl;
+    std::cout << "Information about the packages:"
+              << "\nsented_packet_count=" << icmp.getSentedPackageCount()
+              << ", recv packet count=" << icmp.getRecvPackageCount()
+              << ", packet loss=" << icmp.getPacketLoss() << "%" << std::endl;
+}
+
+void Pinger::recvOrLoss(int dur) {
+    if (dur < 1000) {
+        this->timeVector.push_back(dur);
+        std::cout << dur << " ms" << std::endl;
+    }
+}
+
 void Pinger::ping() {
-    int iter = 6;
-    const char *ip = hostNameToIp();
-
-    ICMP icmp(ip);
-
-    std::vector<double> timeVector;
-
+    int iter = 5;
     std::cout << "Ping " << hostname << " "
               << "(" << ip << ")" << std::endl;
 
-    while (true) {
-        auto dur = measureTime([&icmp]() {
-            icmp.sendPacket();
-            icmp.receivePacket();
+    while (iter > 0) {
+        auto dur = measureTime([&]() {
+            this->icmp.sendPacket();
+            this->icmp.receivePacket();
         });
-        timeVector.push_back(dur);
-        std::cout << dur << " ms" << std::endl;
+
+        recvOrLoss(dur);
         iter--;
         sleep(1);
     }
+    displayPingInfo();
 }
+
+Pinger::Pinger() : timeVector(), ip(hostNameToIp()), icmp(ip) {}
