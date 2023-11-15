@@ -8,6 +8,6 @@
 
 int main() {
     srand(time(NULL));
-    Pinger pinger;
+    Pinger& pinger = Pinger::getInstance();
     pinger.ping();
 }

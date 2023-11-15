@@ -22,6 +22,12 @@ const char *Pinger::hostNameToIp() {
     return inet_ntoa(*((struct in_addr *)host->h_addr_list[0]));
 }
 
+int Pinger::specifyNumberOfPackage() {
+    std::cout << "Enter cout of package to sent" << std::endl;
+    std::cin >> countPackageForSending;
+    return countPackageForSending;
+}
+
 int Pinger::measureTime(std::function<void()> sendAndRecv) {
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -83,22 +89,35 @@ void Pinger::recvOrLoss(int dur) {
     }
 }
 
+void Pinger::signalHandler(int signal) {
+    if (signal == SIGINT) {
+        std::cout << "\b\b \b\b";
+        Pinger::getInstance().displayPingInfo();
+        exit(signal);
+    }
+}
+
 void Pinger::ping() {
-    int iter = 5;
     std::cout << "Ping " << hostname << " "
               << "(" << ip << ")" << std::endl;
 
-    while (iter > 0) {
+    signal(SIGINT, Pinger::signalHandler);
+    while (countPackageForSending > 0) {
         auto dur = measureTime([&]() {
             this->icmp.sendPacket();
             this->icmp.receivePacket();
         });
 
         recvOrLoss(dur);
-        iter--;
+        countPackageForSending--;
         sleep(1);
     }
     displayPingInfo();
 }
 
-Pinger::Pinger() : timeVector(), ip(hostNameToIp()), icmp(ip) {}
+Pinger::Pinger() : timeVector(), ip(hostNameToIp()), icmp(ip), countPackageForSending(specifyNumberOfPackage()) {}
+
+Pinger& Pinger::getInstance() {
+    static Pinger pinger;
+    return pinger;
+}
