@@ -25,6 +25,7 @@ private:
 
     ICMP icmp;
 
+
     int measureTime(std::function<void()> sendAndRecv);
 
     const char* hostNameToIp();
@@ -45,6 +46,9 @@ private:
     Pinger(const Pinger&) = delete;
     Pinger& operator=(const Pinger&) = delete;
     virtual ~Pinger() = default;
+    
+    void pingOrMultiping();
+    void multiPing();
 public:
 
     static Pinger& getInstance();

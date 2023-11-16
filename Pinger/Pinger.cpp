@@ -23,9 +23,21 @@ const char *Pinger::hostNameToIp() {
 }
 
 int Pinger::specifyNumberOfPackage() {
-    std::cout << "Enter cout of package to sent" << std::endl;
-    std::cin >> countPackageForSending;
-    return countPackageForSending;
+    int num;
+    std::cout << "Enter count of package to sent" << std::endl;
+
+    while (true) {
+        if (std::cin >> num) {
+            break;
+        }
+        else {
+            std::cout << "Invalid input. Please enter a number." << std::endl;
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
+    }
+
+    return num;
 }
 
 int Pinger::measureTime(std::function<void()> sendAndRecv) {
@@ -97,27 +109,36 @@ void Pinger::signalHandler(int signal) {
     }
 }
 
+void Pinger::multiPing() {
+    std::cout << "Multiping" << std::endl;
+}
+
 void Pinger::ping() {
     std::cout << "Ping " << hostname << " "
               << "(" << ip << ")" << std::endl;
 
     signal(SIGINT, Pinger::signalHandler);
-    while (countPackageForSending > 0) {
+    for(int i = 0; i < countPackageForSending; i++) {
         auto dur = measureTime([&]() {
             this->icmp.sendPacket();
             this->icmp.receivePacket();
         });
 
         recvOrLoss(dur);
-        countPackageForSending--;
         sleep(1);
     }
     displayPingInfo();
 }
 
-Pinger::Pinger() : timeVector(), ip(hostNameToIp()), icmp(ip), countPackageForSending(specifyNumberOfPackage()) {}
+Pinger::Pinger()
+    : timeVector(),
+      ip(hostNameToIp()),
+      icmp(ip),
+      countPackageForSending(specifyNumberOfPackage()) {
+        pingOrMultiping();
+      }
 
-Pinger& Pinger::getInstance() {
+Pinger &Pinger::getInstance() {
     static Pinger pinger;
     return pinger;
 }

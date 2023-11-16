@@ -8,7 +8,7 @@
 #include <thread>
 
 void ICMP::createICMPHeader() {
-    icmp = (struct icmpheader *)(buffer + sizeof(struct ipheader));
+    icmp = (struct icmpheader *)(this->sendBuffer + sizeof(struct ipheader));
     icmp->icmp_id = rand();
     icmp->icmp_code = 0;
     icmp->icmp_seq = icmpSequence++;
@@ -38,7 +38,7 @@ void ICMP::createDestinationInfo() {
 }
 
 int ICMP::sendRawPacket() {
-    return sendto(icmpSocket, icmp, sizeof(icmp), 0,
+    return sendto(icmpSocket, this->icmp, sizeof(this->icmp), 0,
                   (struct sockaddr *)&this->destInfo, sizeof(this->destInfo));
 }
 
@@ -56,8 +56,22 @@ void ICMP::sendPacket() {
     handleSendResult(sendResult);
 }
 
+void ICMP::handleRecvError() {
+    std::cout << "Error receiving packet: " << strerror(errno) << std::endl;
+    lostPacketCount++;
+}
+
+void ICMP::printRecvPacketInfo(struct icmpheader *icmpRec,
+                               struct sockaddr_in senderInfo) {
+    std::cout << sizeof(icmpRec) + sizeof(ip) << " bytes"
+              << " from: " << destHostname << " ("
+              << inet_ntoa(senderInfo.sin_addr) << ")"
+              << " icmp_seq=" << icmpRec->icmp_seq << " time=";
+    recvPackagesCount++;
+}
+
 void ICMP::receivePacket() {
-    char recvBuffer[1024] = {0};  // Buffer to store received packet
+    char recvBuffer[sizeof(struct icmpheader) + sizeof(struct ipheader)] = {0};
     struct sockaddr_in senderInfo;
     socklen_t senderInfoLen = sizeof(senderInfo);
 
@@ -68,9 +82,7 @@ void ICMP::receivePacket() {
         int recvLen = recvfrom(icmpSocket, recvBuffer, sizeof(recvBuffer), 0,
                                (struct sockaddr *)&senderInfo, &senderInfoLen);
         if (recvLen < 0) {
-            std::cout << "Error receiving packet: " << strerror(errno)
-                      << std::endl;
-            lostPacketCount++;
+            handleRecvError();
             return;
         }
 
@@ -82,12 +94,8 @@ void ICMP::receivePacket() {
             (struct icmpheader *)(recvBuffer + (ip->iph_ihl * 4));
 
         // Check if received packet is ICMP echo reply
-        if (icmpRec->icmp_type == 0 && icmpRec->icmp_seq == icmp->icmp_seq) {
-            std::cout << sizeof(icmpRec) + sizeof(ip) << " bytes"
-                      << " from: " << destHostname << " ("
-                      << inet_ntoa(senderInfo.sin_addr) << ")"
-                      << " icmp_seq=" << icmpRec->icmp_seq << " time=" ;
-            recvPackagesCount++;
+        if (icmpRec->icmp_type == 0 && icmpRec->icmp_seq == icmp->icmp_seq && icmpRec->icmp_id == icmp->icmp_id) {
+            printRecvPacketInfo(icmpRec, senderInfo);
             break;
         }
     }
@@ -132,8 +140,7 @@ ICMP::ICMP(const char *destIp)
       icmpSequence(0),
       sentedPackagesCount(0),
       recvPackagesCount(0),
-      lostPacketCount(0), destHostname(ipToHostname()) {
-    memset(buffer, 0, sizeof(buffer));
-}
+      lostPacketCount(0),
+      destHostname(ipToHostname()) {}
 
 ICMP::~ICMP() { close(icmpSocket); }

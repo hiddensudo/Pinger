@@ -35,7 +35,7 @@ struct icmpheader {
 
 class ICMP {
 private:
-    char buffer[1000];
+    char sendBuffer[sizeof(icmpheader) + sizeof(ipheader)];
 
     RawSocket rawSocket;
     int icmpSocket;
@@ -64,6 +64,9 @@ private:
     void handleSendResult(int result);
     std::string ipToHostname();
 
+    void handleRecvError();
+    void printRecvPacketInfo(struct icmpheader *icmpRec, struct sockaddr_in senderInfo);
+    
 public:
     ICMP(const char* destIp);
     virtual ~ICMP();
