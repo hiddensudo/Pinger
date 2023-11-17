@@ -50,12 +50,12 @@ private:
     struct ipheader* ip;
     struct icmpheader* icmp;
     struct sockaddr_in destInfo;
-    const char* destIp;
+    char* destIp;
     std::string destHostname;
 
     unsigned short calculateChecksum(unsigned short* buffer, int length);
 
-    void createIPHeader(const char* destIp);
+    void createIPHeader(char* destIp);
     void createICMPHeader();
 
     void createDestinationInfo();
@@ -66,9 +66,9 @@ private:
 
     void handleRecvError();
     void printRecvPacketInfo(struct icmpheader *icmpRec, struct sockaddr_in senderInfo);
-    
+
 public:
-    ICMP(const char* destIp);
+    ICMP(char* destIp);
     virtual ~ICMP();
     void sendPacket();
     void receivePacket();
@@ -77,6 +77,9 @@ public:
     int getRecvPackageCount();
     int getLostPackageCount();
     int getPacketLoss();
+    void setDestIp(char* destIp);
+
+    void rebuildIcmp(char *destIp);
 };
 
 #endif  // ICMP_H

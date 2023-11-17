@@ -57,7 +57,7 @@ void ICMP::sendPacket() {
 }
 
 void ICMP::handleRecvError() {
-    std::cout << "Error receiving packet: " << strerror(errno) << std::endl;
+    perror("Error receiving packet");
     lostPacketCount++;
 }
 
@@ -94,7 +94,8 @@ void ICMP::receivePacket() {
             (struct icmpheader *)(recvBuffer + (ip->iph_ihl * 4));
 
         // Check if received packet is ICMP echo reply
-        if (icmpRec->icmp_type == 0 && icmpRec->icmp_seq == icmp->icmp_seq && icmpRec->icmp_id == icmp->icmp_id) {
+        if (icmpRec->icmp_type == 0 && icmpRec->icmp_seq == icmp->icmp_seq &&
+            icmpRec->icmp_id == icmp->icmp_id) {
             printRecvPacketInfo(icmpRec, senderInfo);
             break;
         }
@@ -134,7 +135,18 @@ int ICMP::getPacketLoss() {
     return (this->lostPacketCount / this->sentedPackagesCount) * 100;
 }
 
-ICMP::ICMP(const char *destIp)
+void ICMP::setDestIp(char *destIp) { this->destIp = destIp; }
+
+void ICMP::rebuildIcmp(char *destIp) {
+    setDestIp(destIp);
+    this->icmpSequence = 0;
+    sentedPackagesCount = 0;
+    recvPackagesCount = 0;
+    lostPacketCount = 0;
+    destHostname = ipToHostname();
+}
+
+ICMP::ICMP(char *destIp)
     : destIp(destIp),
       icmpSocket(rawSocket.getSocket()),
       icmpSequence(0),

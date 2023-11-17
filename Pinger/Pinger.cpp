@@ -8,29 +8,28 @@
 #include <algorithm>
 #include <iostream>
 
-const char *Pinger::hostNameToIp() {
+char *Pinger::hostNameToIp() {
     std::cout << "Enter host name for ping: " << std::endl;
     std::cin >> hostname;
 
     struct hostent *host = gethostbyname(hostname.c_str());
 
     if (host == NULL) {
-        std::cerr << "Error: " << strerror(h_errno) << std::endl;
+        std::cerr << "Error: " << hstrerror(h_errno) << std::endl;
         exit(1);
     }
 
     return inet_ntoa(*((struct in_addr *)host->h_addr_list[0]));
 }
 
-int Pinger::specifyNumberOfPackage() {
-    int num;
-    std::cout << "Enter count of package to sent" << std::endl;
+unsigned int Pinger::specifyNumberOfPackage() {
+    unsigned int num;
+    std::cout << "Enter number of package to sent" << std::endl;
 
     while (true) {
         if (std::cin >> num) {
             break;
-        }
-        else {
+        } else {
             std::cout << "Invalid input. Please enter a number." << std::endl;
             std::cin.clear();
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
@@ -94,8 +93,8 @@ void Pinger::displayPingInfo() {
               << ", packet loss=" << icmp.getPacketLoss() << "%" << std::endl;
 }
 
-void Pinger::recvOrLoss(int dur) {
-    if (dur < 1000) {
+void Pinger::skipLostPacket(int dur) {
+    if (dur <= 1000) {
         this->timeVector.push_back(dur);
         std::cout << dur << " ms" << std::endl;
     }
@@ -103,40 +102,62 @@ void Pinger::recvOrLoss(int dur) {
 
 void Pinger::signalHandler(int signal) {
     if (signal == SIGINT) {
-        std::cout << "\b\b \b\b";
+        std::cout << "\b\b \b\b"; // remove ^C
         Pinger::getInstance().displayPingInfo();
         exit(signal);
     }
 }
 
-void Pinger::multiPing() {
-    std::cout << "Multiping" << std::endl;
+bool Pinger::pingAnotherLink() {
+    std::string yn;
+    std::cout << "Do you want to ping another link? y/n" << std::endl;
+
+    while (true) {
+        std::cin >> yn;
+
+        if (yn != "y" && yn != "n")
+            std::cout << "Invalid input. Please enter y/n" << std::endl;
+
+        if (yn == "y") {
+            ip = hostNameToIp();
+            numberPackageForSending = specifyNumberOfPackage();
+            icmp.rebuildIcmp(ip);
+            break;
+        } 
+
+        if(yn == "n") break;
+    }
+
+    return yn == "y" ? true : false;
 }
 
 void Pinger::ping() {
-    std::cout << "Ping " << hostname << " "
-              << "(" << ip << ")" << std::endl;
+    while (true) {
+        std::cout << "Ping " << hostname << " "
+                  << "(" << ip << ")" << std::endl;
 
-    signal(SIGINT, Pinger::signalHandler);
-    for(int i = 0; i < countPackageForSending; i++) {
-        auto dur = measureTime([&]() {
-            this->icmp.sendPacket();
-            this->icmp.receivePacket();
-        });
+        signal(SIGINT, Pinger::signalHandler);
 
-        recvOrLoss(dur);
-        sleep(1);
+        for (int i = 0; i < numberPackageForSending; i++) {
+            auto dur = measureTime([&]() {
+                this->icmp.sendPacket();
+                this->icmp.receivePacket();
+            });
+
+            skipLostPacket(dur);
+            sleep(1);
+        }
+        displayPingInfo();
+
+        if (!pingAnotherLink()) return;
     }
-    displayPingInfo();
 }
 
 Pinger::Pinger()
     : timeVector(),
       ip(hostNameToIp()),
       icmp(ip),
-      countPackageForSending(specifyNumberOfPackage()) {
-        pingOrMultiping();
-      }
+      numberPackageForSending(specifyNumberOfPackage()) {}
 
 Pinger &Pinger::getInstance() {
     static Pinger pinger;

@@ -16,19 +16,19 @@
 class Pinger {
 private:
     std::string hostname;
-    const char* ip = hostNameToIp();
+    char* ip;
 
-    int countPackageForSending;
-    int specifyNumberOfPackage();
+    unsigned int numberPackageForSending;
 
     std::vector<int> timeVector;
 
     ICMP icmp;
 
+    unsigned int specifyNumberOfPackage();
 
     int measureTime(std::function<void()> sendAndRecv);
 
-    const char* hostNameToIp();
+    char* hostNameToIp();
 
     void getReceiverIpAddress();
 
@@ -36,21 +36,19 @@ private:
     int getMinPing();
     int getAvgPing();
 
-    void recvOrLoss(int dur);
+    void skipLostPacket(int dur);
 
     void ensurePingDataExists();
     void displayPingInfo();
     static void signalHandler(int signal);
 
+    bool pingAnotherLink();
+
     Pinger();
     Pinger(const Pinger&) = delete;
     Pinger& operator=(const Pinger&) = delete;
     virtual ~Pinger() = default;
-    
-    void pingOrMultiping();
-    void multiPing();
 public:
-
     static Pinger& getInstance();
 
     void ping();
