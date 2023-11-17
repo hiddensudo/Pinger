@@ -1,0 +1,30 @@
+@startuml
+participant "User" as U
+participant "Pinger" as P
+participant "ICMP Library" as I
+participant "RawSocket" as RS
+participant "Remote Host" as R
+
+U -> P: Start Pinger App
+activate P
+U -> P: Enter Address and Ping Count
+P -> I: Create RawSocket
+activate I
+I -> RS: RawSocket Created
+activate RS
+loop Ping Count
+    I -> RS: Create ICMP Packet
+    RS -> R: Send ICMP Echo Request
+    activate R
+    R --> RS: ICMP Echo Reply
+    deactivate R
+    RS --> I: Receive ICMP Echo Reply
+    I --> P: Unpack and provide packet info
+    P --> U: Print Ping Info
+end
+U -> U: Decide to ping another address?
+U -> P: Close Pinger App
+deactivate P
+@enduml
+
+"www.plantuml.com/plantuml/png/RP9VJiCm38VVSmfhxxj07s2eJ28II56h7Y0qXaLqSKYyeTsU_AdQ5T6NIlq-_np7FKJMWI_dIVZqjgFrsZ7iXeXX1ph2iFskhFkSYTeIsRufUBNlGOTRuNBBE_tJq_Y5N63N_w5u9aPueJXp8GROFu1geESaGcqCJzuBFRAzwcIhnJawpj2OW362TgRuqDB5iL1PaWsq0NFLSf0rI0gPdQvlLZhhPh4I5XEHlu-6z2obStwv2ALpHkO95I4DWivKUXnF11r-Np1MP-rHIs1VCpUwdsw56bprfKCTiSCHxHN_BPD5KWqCpgVJbLloWQxM87XTHhRkWughYZiqe89rN2UM6Q8pOe3Add7CjKpWCzUE-8G1TDt2uxASTgA8zmky6q29GufClzyl"
