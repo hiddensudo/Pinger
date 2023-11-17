@@ -5,10 +5,8 @@ project(Pinger)
 set(CMAKE_CXX_STANDARD 17)
 
 include_directories(
-        ${PROJECT_SOURCE_DIR}/ICMP
-        ${PROJECT_SOURCE_DIR}/Pinger
-        ${PROJECT_SOURCE_DIR}/RawSocket
-        ${PROJECT_SOURCE_DIR}/SignalHandler
+        ${PROJECT_SOURCE_DIR}/lib
+        ${PROJECT_SOURCE_DIR}/include
     )
 
-add_executable(pinger pinger.cpp ICMP/ICMP.cpp Pinger/Pinger.cpp RawSocket/RawSocket.cpp)
+add_executable(pinger pinger.cpp lib/ICMP.cpp lib/Pinger.cpp lib/RawSocket.cpp)

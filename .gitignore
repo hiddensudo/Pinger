@@ -35,4 +35,3 @@
 .vscode
 build
 .clang-format
-SignalHandler
