@@ -7,7 +7,7 @@
 #include <iostream>
 
 int main() {
-    srand(time(NULL));
+    srand(time(NULL)); // Why does it here?
     Pinger& pinger = Pinger::getInstance();
     pinger.ping();
 }

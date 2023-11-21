@@ -8,6 +8,7 @@
 
 #include <iostream>
 
+// receive std::chrono::duration/std::chrono::seconds
 void RawSocket::setTimeout(int seconds) {
     struct timeval timeout;
     timeout.tv_sec = seconds;
@@ -23,7 +24,7 @@ RawSocket::RawSocket() {
     this->rawSocket = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if (this->rawSocket == -1) {
         std::cout << "Error: " << strerror(errno) << std::endl;
-        exit(1);
+        exit(1); // If error happened it doesn't that we should exit, give it another try
     }
 }
 

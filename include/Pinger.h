@@ -16,17 +16,15 @@
 class Pinger {
 private:
     std::string hostname;
-    char* ip;
+    char* ip; // Better to save it in string
 
-    unsigned int numberPackageForSending;
+    unsigned int numberPackageForSending; // unnecessary
 
-    std::vector<int> timeVector;
+    std::vector<int> timeVector; // name could be better
 
     ICMP icmp;
 
     unsigned int specifyNumberOfPackage();
-
-    int measureTime(std::function<void()> sendAndRecv);
 
     char* hostNameToIp();
 
@@ -46,8 +44,8 @@ private:
 
     Pinger();
     Pinger(const Pinger&) = delete;
-    Pinger& operator=(const Pinger&) = delete;
-    virtual ~Pinger() = default;
+    Pinger& operator=(const Pinger&) = delete; // You need to delete move contructors as well
+    virtual ~Pinger() = default; // Why is it virtual?
 public:
     static Pinger& getInstance();
 

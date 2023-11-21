@@ -53,6 +53,7 @@ private:
     char* destIp;
     std::string destHostname;
 
+    //                               const
     unsigned short calculateChecksum(unsigned short* buffer, int length);
 
     void createIPHeader(char* destIp);
@@ -65,6 +66,7 @@ private:
     std::string ipToHostname();
 
     void handleRecvError();
+    //                       const
     void printRecvPacketInfo(struct icmpheader *icmpRec, struct sockaddr_in senderInfo);
 
 public:
@@ -72,7 +74,10 @@ public:
     virtual ~ICMP();
     void sendPacket();
     void receivePacket();
+    // void ping(const std::string & IPaddress);
+    // void sendAndReceive();
 
+    //  English error
     int getSentedPackageCount();
     int getRecvPackageCount();
     int getLostPackageCount();

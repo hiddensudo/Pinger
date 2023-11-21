@@ -7,9 +7,13 @@
 #include <iostream>
 #include <thread>
 
+namespace {
+
+}
+
 void ICMP::createICMPHeader() {
     icmp = (struct icmpheader *)(this->sendBuffer + sizeof(struct ipheader));
-    icmp->icmp_id = rand();
+    icmp->icmp_id = rand(); // std::random_device
     icmp->icmp_code = 0;
     icmp->icmp_seq = icmpSequence++;
     icmp->icmp_type = 8;    // ICMP Echo Request
@@ -18,6 +22,7 @@ void ICMP::createICMPHeader() {
         calculateChecksum((unsigned short *)icmp, sizeof(struct icmpheader));
 }
 
+// We can move this function out of our class scope
 std::string ICMP::ipToHostname() {
     struct sockaddr_in sockAddr;
     char host[1024];
@@ -32,6 +37,7 @@ std::string ICMP::ipToHostname() {
     return std::string(host);
 }
 
+// setDestInfo()
 void ICMP::createDestinationInfo() {
     this->destInfo.sin_family = AF_INET;
     this->destInfo.sin_addr.s_addr = inet_addr(destIp);
@@ -50,6 +56,7 @@ void ICMP::handleSendResult(int result) {
 }
 
 void ICMP::sendPacket() {
+    // I don't see a lot of effort for generating such functions
     createICMPHeader();
     createDestinationInfo();
     int sendResult = sendRawPacket();
@@ -72,7 +79,7 @@ void ICMP::printRecvPacketInfo(struct icmpheader *icmpRec,
 
 void ICMP::receivePacket() {
     char recvBuffer[sizeof(struct icmpheader) + sizeof(struct ipheader)] = {0};
-    struct sockaddr_in senderInfo;
+    struct sockaddr_in senderInfo; // {} set it with 0
     socklen_t senderInfoLen = sizeof(senderInfo);
 
     rawSocket.setTimeout(1);
@@ -87,7 +94,8 @@ void ICMP::receivePacket() {
         }
 
         // Extract IP header from received packet
-        struct ipheader *ip = (struct ipheader *)recvBuffer;
+        ipheader *ip = (ipheader *)recvBuffer;
+        // You are not in C, you shouldn't use struct keyword here
 
         // Extract ICMP header from received packet
         struct icmpheader *icmpRec =
@@ -125,12 +133,14 @@ unsigned short ICMP::calculateChecksum(unsigned short *buffer, int length) {
     return answer;
 }
 
-int ICMP::getSentedPackageCount() { return this->sentedPackagesCount; }
+// const
+int ICMP::getSentedPackageCount() const { return this->sentedPackagesCount; }
 
 int ICMP::getRecvPackageCount() { return this->recvPackagesCount; }
 
 int ICMP::getLostPackageCount() { return this->lostPacketCount; }
 
+// statistic saved in pinger app, why do we calculate it here?
 int ICMP::getPacketLoss() {
     return (this->lostPacketCount / this->sentedPackagesCount) * 100;
 }
